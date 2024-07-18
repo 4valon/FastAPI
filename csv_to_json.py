@@ -1,22 +1,22 @@
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
-import pandas as pd
-from typing import List
-import io
+import csv
 
 app = FastAPI()
-csv_data = {}
+error = "Wrong file extention."
 
 @app.post("/csv_to_json/")
 async def upload_csv(file: UploadFile = File(...)):
     if not file.filename.endswith('.csv'):
-        return JSONResponse(status_code=400, content={"message": "File not found or is not .csv file."})
+        return error
     else:
         contents = await file.read()
-        df = pd.read_csv(io.StringIO(contents.decode('utf-8')), delimiter=',')
-        csv_data[file.filename] = df.to_dict(orient="records")
-        json_data = [df.to_dict(orient="list")]
-        if file.filename in csv_data:
-            return JSONResponse(content=json_data)
-        else:
-            return JSONResponse(status_code=500, content={"message": "Unidentified error occured. Please try again, or choose different file."})
+        decode = contents.decode('utf-8')
+        csv_reader = csv.reader(decode.splitlines(), delimiter=',')
+        keys = next(csv_reader)
+        json_content = {key: [] for key in keys}
+
+        for row in csv_reader:
+            for key, value in zip(keys, row):
+                json_content[key].append(value)
+    
+        return json_content
